@@ -87,6 +87,8 @@ canvas {
     height: 100%;
     /* Slight blur to make it look like blooming neon */
     filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.5));
+    touch-action: none;
+    /* Crucial for swipe pointer events on mobile */
 }
 
 .overlay {
@@ -503,7 +505,7 @@ h2.glitch::after {
     box-shadow: 0 0 10px rgba(0, 255, 255, 0.2), inset 0 0 10px rgba(0, 255, 255, 0.05);
     transition: all 0.1s;
     -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
+    touch-action: none;
 }
 
 .mobile-btn:active {
