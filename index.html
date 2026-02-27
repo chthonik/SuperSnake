@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SuperSnake - A retro-styled snake game with powerups and visual effects">
+    <title>SuperSnake</title>
+    <link rel="stylesheet" href="index.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=VT323&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="crt-wrapper">
+        <div class="game-container">
+            <header>
+                <div class="score-board">
+                    <span>SCORE</span> <span id="score">0</span>
+                </div>
+                <div class="high-score-board">
+                    <span>HIGH SCORE</span> <span id="high-score">0</span>
+                </div>
+            </header>
+            <div id="canvas-container">
+                <canvas id="game-canvas"></canvas>
+                <div id="pause-overlay" class="overlay hidden">
+                    <h2 class="glitch" data-text="PAUSED">PAUSED</h2>
+                </div>
+                <div id="game-over-overlay" class="overlay hidden">
+                    <h2 class="glitch" data-text="GAME OVER">GAME OVER</h2>
+                    <p>SCORE: <span id="final-score">0</span></p>
+
+                    <div id="initials-container" class="hidden">
+                        <p class="new-record">NEW HIGH SCORE!</p>
+                        <input type="text" id="initials-input" placeholder="ABC" maxlength="3" class="retro-input">
+                        <button id="save-score-btn" class="neon-btn mini">SAVE</button>
+                    </div>
+
+                    <div class="leaderboard">
+                        <h3>TOP GUNS</h3>
+                        <div id="leaderboard-list"></div>
+                    </div>
+
+                    <div class="game-over-btns">
+                        <button id="restart-btn" class="neon-btn">RESTART</button>
+                        <button id="download-btn" class="neon-btn mini secondary">EXPORT SCORES</button>
+                    </div>
+                </div>
+                <div id="start-overlay" class="overlay">
+                    <h1 class="glitch" data-text="SUPER SNAKE">SUPER SNAKE</h1>
+                    <div class="instructions">
+                        <p>USE ARROWS OR WASD TO MOVE</p>
+                        <p>PRESS 'P' TO PAUSE</p>
+                        <p>SPACE TO FIRE LASER (POWERUP)</p>
+                    </div>
+                    <div class="powerup-legend">
+                        <div class="legend-item"><span class="color-box"
+                                style="background:#ff3366; box-shadow: 0 0 10px #ff3366;"></span> Apple</div>
+                        <div class="legend-item"><span class="color-box"
+                                style="background:#00ffff; box-shadow: 0 0 10px #00ffff;"></span> Speed</div>
+                        <div class="legend-item"><span class="color-box"
+                                style="background:#ff00ff; box-shadow: 0 0 10px #ff00ff;"></span> Slow</div>
+                        <div class="legend-item"><span class="color-box"
+                                style="background:#ffff00; box-shadow: 0 0 10px #ffff00;"></span> Invincible</div>
+                        <div class="legend-item"><span class="color-box"
+                                style="background:#ff4500; box-shadow: 0 0 10px #ff4500;"></span> Laser Beam</div>
+                    </div>
+                    <button id="start-btn" class="neon-btn">START GAME</button>
+                </div>
+                <div id="flash-overlay" class="overlay hidden"
+                    style="background: transparent; z-index: 15; backdrop-filter: none;"></div>
+            </div>
+            <div class="status-bar" id="status-bar">
+                <!-- Powerup status indicator -->
+            </div>
+        </div>
+        <div class="effects">
+            <div class="scanlines"></div>
+            <div class="vignette"></div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
