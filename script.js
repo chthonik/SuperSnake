@@ -233,7 +233,9 @@ function displayLeaderboard() {
         div1.className = 'leaderboard-entry';
         div1.innerHTML = `<span>${entry.initials}</span> <span>${entry.score}</span>`;
         leaderboardList.appendChild(div1);
-
+    });
+    // Only show top 3 on startup screen to keep START GAME button visible
+    latestLeaderboard.slice(0, 3).forEach(entry => {
         const div2 = document.createElement('div');
         div2.className = 'leaderboard-entry';
         div2.innerHTML = `<span>${entry.initials}</span> <span>${entry.score}</span>`;
