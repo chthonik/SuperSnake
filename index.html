@@ -32,7 +32,7 @@
                     <p>SCORE: <span id="final-score">0</span></p>
 
                     <div id="initials-container" class="hidden">
-                        <p class="new-record">NEW HIGH SCORE!</p>
+                        <p id="new-high-score-msg" class="new-record hidden">NEW HIGH SCORE!</p>
                         <input type="text" id="initials-input" placeholder="ABC" maxlength="3" class="retro-input">
                         <button id="save-score-btn" class="neon-btn mini">SAVE</button>
                     </div>
@@ -66,6 +66,12 @@
                         <div class="legend-item"><span class="color-box"
                                 style="background:#ff4500; box-shadow: 0 0 10px #ff4500;"></span> Laser Beam</div>
                     </div>
+
+                    <div class="leaderboard" style="margin-top: 15px; margin-bottom: 25px;">
+                        <h3 style="font-size: 1.2rem;">GLOBAL TOP GUNS</h3>
+                        <div id="startup-leaderboard-list"></div>
+                    </div>
+
                     <button id="start-btn" class="neon-btn">START GAME</button>
                 </div>
                 <div id="flash-overlay" class="overlay hidden"
@@ -98,7 +104,7 @@
     <!-- Firebase SDKs (using compat versions for simpler module-less inclusion) -->
     <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-database-compat.js"></script>
-    <script src="script.js"></script>
+    <script src="script.js?v=2"></script>
 </body>
 
 </html>

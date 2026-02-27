@@ -8,8 +8,10 @@ const statusBar = document.getElementById('status-bar');
 
 const initialsContainer = document.getElementById('initials-container');
 const initialsInput = document.getElementById('initials-input');
+const finalsContainer = document.getElementById('final-score');
 const saveScoreBtn = document.getElementById('save-score-btn');
 const leaderboardList = document.getElementById('leaderboard-list');
+const startupLeaderboardList = document.getElementById('startup-leaderboard-list');
 const downloadBtn = document.getElementById('download-btn');
 
 const startOverlay = document.getElementById('start-overlay');
@@ -101,11 +103,12 @@ let laserBeam = null; // { x1, y1, x2, y2, time }
 // Timing
 let lastTime = 0;
 let accumulator = 0;
+let animationFrameId = null;
 let moveInterval = 180; // ms per movement step
 let baseMoveInterval = 180;
 
 // Active Powerups (supports multiple simultaneous)
-let activePowerups = new Map(); // Map<ItemType, remainingMs>
+let activePowerups = []; // Array of { type: ItemType, remaining: number, id: number }
 
 // Initialization
 function resizeCanvas() {
@@ -131,7 +134,8 @@ function resetGame() {
     items = [];
     spawnItem(ItemType.APPLE);
     moveInterval = baseMoveInterval;
-    activePowerups.clear();
+    laserTimer = 0;
+    activePowerups = [];
     currentState = GameState.PLAYING;
     startOverlay.classList.add('hidden');
     gameOverOverlay.classList.add('hidden');
@@ -142,7 +146,8 @@ function resetGame() {
 
     lastTime = performance.now();
     accumulator = 0;
-    requestAnimationFrame(gameLoop);
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    animationFrameId = requestAnimationFrame(gameLoop);
 }
 
 // Input Handling
@@ -160,7 +165,7 @@ window.addEventListener('keydown', (event) => {
     }
 
     if (key === ' ') {
-        if (activePowerups.has(ItemType.LASER)) {
+        if (activePowerups.some(p => p.type === ItemType.LASER)) {
             fireLaser();
         }
         return;
@@ -222,11 +227,17 @@ downloadBtn.addEventListener('click', () => {
 
 function displayLeaderboard() {
     leaderboardList.innerHTML = '';
+    startupLeaderboardList.innerHTML = '';
     latestLeaderboard.forEach(entry => {
-        const div = document.createElement('div');
-        div.className = 'leaderboard-entry';
-        div.innerHTML = `<span>${entry.initials}</span> <span>${entry.score}</span>`;
-        leaderboardList.appendChild(div);
+        const div1 = document.createElement('div');
+        div1.className = 'leaderboard-entry';
+        div1.innerHTML = `<span>${entry.initials}</span> <span>${entry.score}</span>`;
+        leaderboardList.appendChild(div1);
+
+        const div2 = document.createElement('div');
+        div2.className = 'leaderboard-entry';
+        div2.innerHTML = `<span>${entry.initials}</span> <span>${entry.score}</span>`;
+        startupLeaderboardList.appendChild(div2);
     });
 }
 
@@ -306,24 +317,23 @@ function gameLoop(currentTime) {
     accumulator += deltaTime;
 
     // Update powerup timers
-    if (activePowerups.size > 0) {
-        for (const [type, remaining] of activePowerups) {
-            const newRemaining = remaining - deltaTime;
-            if (newRemaining <= 0) {
-                activePowerups.delete(type);
+    if (activePowerups.length > 0) {
+        let speedCount = 0;
+        let slowCount = 0;
+        for (let i = activePowerups.length - 1; i >= 0; i--) {
+            activePowerups[i].remaining -= deltaTime;
+            if (activePowerups[i].remaining <= 0) {
+                activePowerups.splice(i, 1);
             } else {
-                activePowerups.set(type, newRemaining);
+                if (activePowerups[i].type === ItemType.SPEED) speedCount++;
+                if (activePowerups[i].type === ItemType.SLOW) slowCount++;
             }
         }
-        // Recalculate move speed based on active powerups
-        if (activePowerups.has(ItemType.SPEED)) {
-            moveInterval = baseMoveInterval * 0.5;
-        } else if (activePowerups.has(ItemType.SLOW)) {
-            moveInterval = baseMoveInterval * 1.8;
-        } else {
-            moveInterval = baseMoveInterval;
-        }
+        // Recalculate move speed based on stacked active powerups
+        moveInterval = baseMoveInterval * Math.pow(0.5, speedCount) * Math.pow(1.8, slowCount);
         updateStatusBarDisplay();
+    } else {
+        moveInterval = baseMoveInterval;
     }
 
     // Always have a chance to spawn powerups, even if one is active or already on the board
@@ -342,7 +352,7 @@ function gameLoop(currentTime) {
     // Render immediately based on state
     render(deltaTime);
 
-    requestAnimationFrame(gameLoop);
+    animationFrameId = requestAnimationFrame(gameLoop);
 }
 
 function update() {
@@ -360,7 +370,7 @@ function update() {
     }
 
     if (hitWall) {
-        if (activePowerups.has(ItemType.INVINCIBLE)) {
+        if (activePowerups.some(p => p.type === ItemType.INVINCIBLE)) {
             // Wrap around
             if (head.x < 0) head.x = GRID_SIZE - 1;
             else if (head.x >= GRID_SIZE) head.x = 0;
@@ -381,7 +391,7 @@ function update() {
         }
     }
 
-    if (hitSelf && !activePowerups.has(ItemType.INVINCIBLE)) {
+    if (hitSelf && !activePowerups.some(p => p.type === ItemType.INVINCIBLE)) {
         gameOver();
         return;
     }
@@ -469,16 +479,16 @@ function togglePause() {
         currentState = GameState.PLAYING;
         pauseOverlay.classList.add('hidden');
         lastTime = performance.now();
-        requestAnimationFrame(gameLoop);
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        animationFrameId = requestAnimationFrame(gameLoop);
     }
 }
 
 function activatePowerup(type) {
-    activePowerups.set(type, type.duration);
+    activePowerups.push({ type, remaining: type.duration, id: Date.now() + Math.random() });
 
     // Trigger flash effect
-    flashOverlay.classList.remove('hidden');
-    flashOverlay.classList.remove('flash-anim');
+    flashOverlay.classList.remove('hidden', 'flash-anim');
     void flashOverlay.offsetWidth;
     flashOverlay.classList.add('flash-anim');
     flashOverlay.style.boxShadow = `inset 0 0 100px ${type.color}`;
@@ -487,38 +497,44 @@ function activatePowerup(type) {
         flashOverlay.style.boxShadow = 'none';
     }, 300);
 
-    // Recalculate speed
-    if (activePowerups.has(ItemType.SPEED)) {
-        moveInterval = baseMoveInterval * 0.5;
-    } else if (activePowerups.has(ItemType.SLOW)) {
-        moveInterval = baseMoveInterval * 1.8;
-    } else {
-        moveInterval = baseMoveInterval;
-    }
+    // Recalculate speed for newly added item
+    const speedCount = activePowerups.filter(p => p.type === ItemType.SPEED).length;
+    const slowCount = activePowerups.filter(p => p.type === ItemType.SLOW).length;
+    moveInterval = baseMoveInterval * Math.pow(0.5, speedCount) * Math.pow(1.8, slowCount);
 
     updateStatusBarDisplay();
 }
 
 function clearPowerup() {
-    activePowerups.clear();
+    activePowerups = [];
     moveInterval = baseMoveInterval;
     statusBar.className = 'status-bar';
     statusBar.innerText = '';
 }
 
 function updateStatusBarDisplay() {
-    if (activePowerups.size === 0) {
+    if (activePowerups.length === 0) {
         statusBar.className = 'status-bar';
         statusBar.innerText = '';
         return;
     }
-    // Show all active powerups
+    // Group active powerups by type
+    const grouped = new Map();
+    for (const p of activePowerups) {
+        if (!grouped.has(p.type)) grouped.set(p.type, { count: 0, maxRemaining: 0 });
+        const entry = grouped.get(p.type);
+        entry.count++;
+        entry.maxRemaining = Math.max(entry.maxRemaining, p.remaining);
+    }
+
     const parts = [];
     statusBar.className = 'status-bar';
-    for (const [type, remaining] of activePowerups) {
-        const secs = Math.ceil(remaining / 1000);
-        parts.push(`${type.name} ${secs}s`);
-        // Add the highest-priority status class
+    for (const [type, data] of grouped) {
+        const secs = Math.ceil(data.maxRemaining / 1000);
+        const countStr = data.count > 1 ? ` x${data.count}` : '';
+        parts.push(`${type.name}${countStr} ${secs}s`);
+
+        // Add the status class based on type
         if (type === ItemType.SPEED) statusBar.classList.add('status-speed');
         else if (type === ItemType.SLOW) statusBar.classList.add('status-slow');
         else if (type === ItemType.INVINCIBLE) statusBar.classList.add('status-invincible');
@@ -543,6 +559,13 @@ function gameOver() {
     // Check if score makes it onto global leaderboard
     const lowestGlobalScore = latestLeaderboard.length < 10 ? 0 : (latestLeaderboard[latestLeaderboard.length - 1]?.score || 0);
     const isLeaderboardBound = score > lowestGlobalScore;
+    const msgEl = document.getElementById('new-high-score-msg');
+
+    if ((isLeaderboardBound || (score > localHigh)) && score > 0) {
+        msgEl.classList.remove('hidden');
+    } else {
+        msgEl.classList.add('hidden');
+    }
 
     if (isLeaderboardBound && score > 0) {
         initialsContainer.classList.remove('hidden');
@@ -626,8 +649,8 @@ function render(dt) {
     });
 
     // Draw Snake
-    const headColor = activePowerups.has(ItemType.INVINCIBLE) ? INVINCIBLE_HEAD_COLOR : SNAKE_HEAD_COLOR;
-    const bodyColor = activePowerups.has(ItemType.INVINCIBLE) ? INVINCIBLE_BODY_COLOR : SNAKE_BODY_COLOR;
+    const headColor = activePowerups.some(p => p.type === ItemType.INVINCIBLE) ? INVINCIBLE_HEAD_COLOR : SNAKE_HEAD_COLOR;
+    const bodyColor = activePowerups.some(p => p.type === ItemType.INVINCIBLE) ? INVINCIBLE_BODY_COLOR : SNAKE_BODY_COLOR;
 
     for (let i = 0; i < snake.length; i++) {
         const part = snake[i];
@@ -637,8 +660,8 @@ function render(dt) {
 
         if (i === 0) {
             ctx.fillStyle = headColor;
-            ctx.shadowBlur = activePowerups.size > 0 ? 20 : 10;
-            ctx.shadowColor = activePowerups.size > 0 ? [...activePowerups.keys()][0].color : SNAKE_GLOW;
+            ctx.shadowBlur = activePowerups.length > 0 ? 20 : 10;
+            ctx.shadowColor = activePowerups.length > 0 ? activePowerups[activePowerups.length - 1].type.color : SNAKE_GLOW;
 
             // Draw rounded head
             ctx.beginPath();
@@ -719,7 +742,7 @@ document.getElementById('btn-right').addEventListener('pointerdown', (e) => {
 
 document.getElementById('btn-fire').addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    if (activePowerups.has(ItemType.LASER)) {
+    if (activePowerups.some(p => p.type === ItemType.LASER)) {
         fireLaser();
     }
 });
