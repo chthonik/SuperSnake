@@ -21,9 +21,10 @@ body {
     background-color: #000;
     color: var(--text-main);
     font-family: var(--font-heading);
-    overflow: hidden;
-    height: 100vh;
+    overflow: auto;
+    min-height: 100vh;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
 }
@@ -469,4 +470,112 @@ h2.glitch::after {
     color: #ff4500;
     text-shadow: 0 0 5px #ff4500;
     animation: pulse-laser 1s infinite;
+}
+
+/* Mobile Controls */
+.mobile-controls {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    margin-top: 15px;
+    padding-bottom: 20px;
+}
+
+.mobile-controls-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.mobile-btn {
+    width: 65px;
+    height: 65px;
+    border-radius: 12px;
+    border: 2px solid var(--neon-blue);
+    background: rgba(0, 255, 255, 0.08);
+    color: var(--neon-blue);
+    font-size: 1.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2), inset 0 0 10px rgba(0, 255, 255, 0.05);
+    transition: all 0.1s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.mobile-btn:active {
+    background: rgba(0, 255, 255, 0.25);
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.5), inset 0 0 15px rgba(0, 255, 255, 0.2);
+    transform: scale(0.95);
+}
+
+#btn-fire {
+    border-color: #ff4500;
+    color: #ff4500;
+    background: rgba(255, 69, 0, 0.08);
+    box-shadow: 0 0 10px rgba(255, 69, 0, 0.2), inset 0 0 10px rgba(255, 69, 0, 0.05);
+}
+
+#btn-fire:active {
+    background: rgba(255, 69, 0, 0.25);
+    box-shadow: 0 0 20px rgba(255, 69, 0, 0.5), inset 0 0 15px rgba(255, 69, 0, 0.2);
+}
+
+#btn-pause {
+    border-color: var(--neon-yellow);
+    color: var(--neon-yellow);
+    background: rgba(255, 255, 0, 0.08);
+    box-shadow: 0 0 10px rgba(255, 255, 0, 0.2), inset 0 0 10px rgba(255, 255, 0, 0.05);
+}
+
+#btn-pause:active {
+    background: rgba(255, 255, 0, 0.25);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .mobile-controls {
+        display: flex;
+    }
+
+    .crt-wrapper {
+        padding: 5px;
+    }
+
+    .game-container {
+        max-width: 100vw;
+    }
+
+    #canvas-container {
+        max-width: 95vw;
+    }
+
+    canvas {
+        max-width: 100%;
+        height: auto !important;
+    }
+
+    header {
+        font-size: 0.8rem;
+    }
+
+    .instructions p {
+        font-size: 1rem;
+    }
+
+    .powerup-legend {
+        font-size: 1rem;
+        gap: 8px 15px;
+    }
+
+    .overlay h1 {
+        font-size: 2rem;
+    }
+
+    .overlay h2 {
+        font-size: 1.8rem;
+    }
 }

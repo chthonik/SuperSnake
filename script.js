@@ -637,3 +637,77 @@ function debugInit() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 debugInit();
+
+// ===== MOBILE TOUCH CONTROLS =====
+
+// On-screen button controls
+document.getElementById('btn-up').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (currentState === GameState.PLAYING && direction.y !== 1) {
+        nextDirection = { x: 0, y: -1 };
+    }
+});
+
+document.getElementById('btn-down').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (currentState === GameState.PLAYING && direction.y !== -1) {
+        nextDirection = { x: 0, y: 1 };
+    }
+});
+
+document.getElementById('btn-left').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (currentState === GameState.PLAYING && direction.x !== 1) {
+        nextDirection = { x: -1, y: 0 };
+    }
+});
+
+document.getElementById('btn-right').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (currentState === GameState.PLAYING && direction.x !== -1) {
+        nextDirection = { x: 1, y: 0 };
+    }
+});
+
+document.getElementById('btn-fire').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (activePowerup === ItemType.LASER) {
+        fireLaser();
+    }
+});
+
+document.getElementById('btn-pause').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    togglePause();
+});
+
+// Swipe gesture support on the canvas
+let touchStartX = 0;
+let touchStartY = 0;
+
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+}, { passive: false });
+
+canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if (currentState !== GameState.PLAYING) return;
+
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+
+    // Minimum swipe distance
+    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+        // Horizontal swipe
+        if (dx > 0 && direction.x !== -1) nextDirection = { x: 1, y: 0 };
+        else if (dx < 0 && direction.x !== 1) nextDirection = { x: -1, y: 0 };
+    } else {
+        // Vertical swipe
+        if (dy > 0 && direction.y !== -1) nextDirection = { x: 0, y: 1 };
+        else if (dy < 0 && direction.y !== 1) nextDirection = { x: 0, y: -1 };
+    }
+}, { passive: false });
