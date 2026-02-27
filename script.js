@@ -57,9 +57,42 @@ let direction = { x: 1, y: 0 };
 let nextDirection = { x: 1, y: 0 };
 let items = [];
 let score = 0;
-let highScore = localStorage.getItem('supersnake_highscore') || 0;
-let leaderboard = JSON.parse(localStorage.getItem('supersnake_leaderboard')) || [];
-highScoreEl.innerText = highScore;
+let highScore = 0;
+let latestLeaderboard = []; // Store the data internally when firebase updates
+
+// Firebase Configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyDuV_3pGgeeAmu-xMlH4z9y-CU_qhiIJEo",
+    authDomain: "supersnake-e2f12.firebaseapp.com",
+    projectId: "supersnake-e2f12",
+    storageBucket: "supersnake-e2f12.firebasestorage.app",
+    messagingSenderId: "77847004270",
+    measurementId: "G-2QH0B78FFJ",
+    databaseURL: "https://supersnake-4d528-default-rtdb.firebaseio.com/"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+const leaderboardRef = database.ref('leaderboard');
+
+// Listen for leaderboard updates
+leaderboardRef.orderByChild('score').limitToLast(10).on('value', (snapshot) => {
+    latestLeaderboard = [];
+    snapshot.forEach((childSnapshot) => {
+        latestLeaderboard.push(childSnapshot.val());
+    });
+    // Reverse because Firebase sorts ascending
+    latestLeaderboard.reverse();
+
+    // Update local high score based on the highest score in the global db (optional, or we can keep it strictly local)
+    // Actually, let's keep personal high score in local storage, and global leaderboard via Firebase
+    let localHigh = localStorage.getItem('supersnake_personal_high') || 0;
+    highScore = Math.max(localHigh, score);
+    highScoreEl.innerText = highScore;
+
+    displayLeaderboard();
+});
 
 // Laser
 let laserActive = false;
@@ -166,22 +199,22 @@ restartBtn.addEventListener('click', resetGame);
 
 saveScoreBtn.addEventListener('click', () => {
     const initials = initialsInput.value.toUpperCase() || '???';
-    const entry = { initials, score };
+    const entry = { initials, score, timestamp: Date.now() };
 
-    leaderboard.push(entry);
-    leaderboard.sort((a, b) => b.score - a.score);
-    leaderboard = leaderboard.slice(0, 10);
-
-    localStorage.setItem('supersnake_leaderboard', JSON.stringify(leaderboard));
-    initialsContainer.classList.add('hidden');
-    displayLeaderboard();
+    // Push new score to Firebase
+    leaderboardRef.push(entry).then(() => {
+        initialsContainer.classList.add('hidden');
+    }).catch(err => {
+        console.error("Error saving score:", err);
+        initialsContainer.classList.add('hidden');
+    });
 });
 
 downloadBtn.addEventListener('click', () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(leaderboard, null, 2));
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(latestLeaderboard, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "supersnake_scores.json");
+    downloadAnchorNode.setAttribute("download", "supersnake_global_scores.json");
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
@@ -189,7 +222,7 @@ downloadBtn.addEventListener('click', () => {
 
 function displayLeaderboard() {
     leaderboardList.innerHTML = '';
-    leaderboard.forEach(entry => {
+    latestLeaderboard.forEach(entry => {
         const div = document.createElement('div');
         div.className = 'leaderboard-entry';
         div.innerHTML = `<span>${entry.initials}</span> <span>${entry.score}</span>`;
@@ -499,15 +532,18 @@ function gameOver() {
     finalScoreEl.innerText = score;
     gameOverOverlay.classList.remove('hidden');
 
-    // Check for high score
-    if (score > highScore) {
+    // Update personal high score locally
+    let localHigh = localStorage.getItem('supersnake_personal_high') || 0;
+    if (score > localHigh) {
+        localStorage.setItem('supersnake_personal_high', score);
         highScore = score;
-        localStorage.setItem('supersnake_highscore', highScore);
         highScoreEl.innerText = highScore;
     }
 
-    // Check if it makes onto leaderboard
-    const isLeaderboardBound = leaderboard.length < 10 || score > (leaderboard[leaderboard.length - 1]?.score || 0);
+    // Check if score makes it onto global leaderboard
+    const lowestGlobalScore = latestLeaderboard.length < 10 ? 0 : (latestLeaderboard[latestLeaderboard.length - 1]?.score || 0);
+    const isLeaderboardBound = score > lowestGlobalScore;
+
     if (isLeaderboardBound && score > 0) {
         initialsContainer.classList.remove('hidden');
         initialsInput.value = '';
