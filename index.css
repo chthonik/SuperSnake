@@ -543,6 +543,9 @@ h2.glitch::after {
 
     .crt-wrapper {
         padding: 5px;
+        flex-direction: column;
+        min-height: 100vh;
+        height: auto;
     }
 
     .game-container {

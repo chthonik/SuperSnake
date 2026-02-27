@@ -71,9 +71,8 @@ let accumulator = 0;
 let moveInterval = 180; // ms per movement step
 let baseMoveInterval = 180;
 
-// Active Powerups
-let activePowerup = null;
-let powerupTimer = 0;
+// Active Powerups (supports multiple simultaneous)
+let activePowerups = new Map(); // Map<ItemType, remainingMs>
 
 // Initialization
 function resizeCanvas() {
@@ -99,7 +98,7 @@ function resetGame() {
     items = [];
     spawnItem(ItemType.APPLE);
     moveInterval = baseMoveInterval;
-    clearPowerup();
+    activePowerups.clear();
     currentState = GameState.PLAYING;
     startOverlay.classList.add('hidden');
     gameOverOverlay.classList.add('hidden');
@@ -128,7 +127,7 @@ window.addEventListener('keydown', (event) => {
     }
 
     if (key === ' ') {
-        if (activePowerup === ItemType.LASER) {
+        if (activePowerups.has(ItemType.LASER)) {
             fireLaser();
         }
         return;
@@ -153,7 +152,7 @@ window.addEventListener('keydown', (event) => {
             nextDirection = newDir;
         }
     } else if (currentState === GameState.PAUSED) {
-        if (e.code === 'Space') {
+        if (event.code === 'Space') {
             currentState = GameState.PLAYING;
             pauseOverlay.classList.add('hidden');
             lastTime = performance.now();
@@ -274,13 +273,24 @@ function gameLoop(currentTime) {
     accumulator += deltaTime;
 
     // Update powerup timers
-    if (activePowerup) {
-        powerupTimer -= deltaTime;
-        if (powerupTimer <= 0) {
-            clearPowerup();
-        } else {
-            updateStatusBarDisplay();
+    if (activePowerups.size > 0) {
+        for (const [type, remaining] of activePowerups) {
+            const newRemaining = remaining - deltaTime;
+            if (newRemaining <= 0) {
+                activePowerups.delete(type);
+            } else {
+                activePowerups.set(type, newRemaining);
+            }
         }
+        // Recalculate move speed based on active powerups
+        if (activePowerups.has(ItemType.SPEED)) {
+            moveInterval = baseMoveInterval * 0.5;
+        } else if (activePowerups.has(ItemType.SLOW)) {
+            moveInterval = baseMoveInterval * 1.8;
+        } else {
+            moveInterval = baseMoveInterval;
+        }
+        updateStatusBarDisplay();
     }
 
     // Always have a chance to spawn powerups, even if one is active or already on the board
@@ -317,7 +327,7 @@ function update() {
     }
 
     if (hitWall) {
-        if (activePowerup === ItemType.INVINCIBLE) {
+        if (activePowerups.has(ItemType.INVINCIBLE)) {
             // Wrap around
             if (head.x < 0) head.x = GRID_SIZE - 1;
             else if (head.x >= GRID_SIZE) head.x = 0;
@@ -338,7 +348,7 @@ function update() {
         }
     }
 
-    if (hitSelf && activePowerup !== ItemType.INVINCIBLE) {
+    if (hitSelf && !activePowerups.has(ItemType.INVINCIBLE)) {
         gameOver();
         return;
     }
@@ -431,55 +441,57 @@ function togglePause() {
 }
 
 function activatePowerup(type) {
-    activePowerup = type;
-    powerupTimer = type.duration;
+    activePowerups.set(type, type.duration);
 
     // Trigger flash effect
     flashOverlay.classList.remove('hidden');
     flashOverlay.classList.remove('flash-anim');
-    // Force DOM reflow to restart animation
     void flashOverlay.offsetWidth;
     flashOverlay.classList.add('flash-anim');
-
-    // Set color based on powerup type for the flash
     flashOverlay.style.boxShadow = `inset 0 0 100px ${type.color}`;
-
     setTimeout(() => {
         flashOverlay.classList.add('hidden');
         flashOverlay.style.boxShadow = 'none';
     }, 300);
 
-    statusBar.className = 'status-bar'; // Reset classes
-
-    if (type === ItemType.SPEED) {
-        moveInterval = baseMoveInterval * 0.5; // Fast
-        statusBar.classList.add('status-speed');
-    } else if (type === ItemType.SLOW) {
-        moveInterval = baseMoveInterval * 1.8; // Slow
-        statusBar.classList.add('status-slow');
-    } else if (type === ItemType.INVINCIBLE) {
-        moveInterval = baseMoveInterval; // Normal speed
-        statusBar.classList.add('status-invincible');
-    } else if (type === ItemType.LASER) {
+    // Recalculate speed
+    if (activePowerups.has(ItemType.SPEED)) {
+        moveInterval = baseMoveInterval * 0.5;
+    } else if (activePowerups.has(ItemType.SLOW)) {
+        moveInterval = baseMoveInterval * 1.8;
+    } else {
         moveInterval = baseMoveInterval;
-        statusBar.classList.add('status-laser'); // Need to add style for this
     }
 
     updateStatusBarDisplay();
 }
 
 function clearPowerup() {
-    activePowerup = null;
-    powerupTimer = 0;
+    activePowerups.clear();
     moveInterval = baseMoveInterval;
     statusBar.className = 'status-bar';
     statusBar.innerText = '';
 }
 
 function updateStatusBarDisplay() {
-    if (!activePowerup) return;
-    const secs = Math.ceil(powerupTimer / 1000);
-    statusBar.innerHTML = `${activePowerup.name} MODE ACTIVE - ${secs}s`;
+    if (activePowerups.size === 0) {
+        statusBar.className = 'status-bar';
+        statusBar.innerText = '';
+        return;
+    }
+    // Show all active powerups
+    const parts = [];
+    statusBar.className = 'status-bar';
+    for (const [type, remaining] of activePowerups) {
+        const secs = Math.ceil(remaining / 1000);
+        parts.push(`${type.name} ${secs}s`);
+        // Add the highest-priority status class
+        if (type === ItemType.SPEED) statusBar.classList.add('status-speed');
+        else if (type === ItemType.SLOW) statusBar.classList.add('status-slow');
+        else if (type === ItemType.INVINCIBLE) statusBar.classList.add('status-invincible');
+        else if (type === ItemType.LASER) statusBar.classList.add('status-laser');
+    }
+    statusBar.innerHTML = parts.join(' | ');
 }
 
 function gameOver() {
@@ -578,8 +590,8 @@ function render(dt) {
     });
 
     // Draw Snake
-    const headColor = activePowerup === ItemType.INVINCIBLE ? INVINCIBLE_HEAD_COLOR : SNAKE_HEAD_COLOR;
-    const bodyColor = activePowerup === ItemType.INVINCIBLE ? INVINCIBLE_BODY_COLOR : SNAKE_BODY_COLOR;
+    const headColor = activePowerups.has(ItemType.INVINCIBLE) ? INVINCIBLE_HEAD_COLOR : SNAKE_HEAD_COLOR;
+    const bodyColor = activePowerups.has(ItemType.INVINCIBLE) ? INVINCIBLE_BODY_COLOR : SNAKE_BODY_COLOR;
 
     for (let i = 0; i < snake.length; i++) {
         const part = snake[i];
@@ -589,8 +601,8 @@ function render(dt) {
 
         if (i === 0) {
             ctx.fillStyle = headColor;
-            ctx.shadowBlur = activePowerup ? 20 : 10;
-            ctx.shadowColor = activePowerup ? activePowerup.color : SNAKE_GLOW;
+            ctx.shadowBlur = activePowerups.size > 0 ? 20 : 10;
+            ctx.shadowColor = activePowerups.size > 0 ? [...activePowerups.keys()][0].color : SNAKE_GLOW;
 
             // Draw rounded head
             ctx.beginPath();
@@ -641,42 +653,42 @@ debugInit();
 // ===== MOBILE TOUCH CONTROLS =====
 
 // On-screen button controls
-document.getElementById('btn-up').addEventListener('touchstart', (e) => {
+document.getElementById('btn-up').addEventListener('pointerdown', (e) => {
     e.preventDefault();
     if (currentState === GameState.PLAYING && direction.y !== 1) {
         nextDirection = { x: 0, y: -1 };
     }
 });
 
-document.getElementById('btn-down').addEventListener('touchstart', (e) => {
+document.getElementById('btn-down').addEventListener('pointerdown', (e) => {
     e.preventDefault();
     if (currentState === GameState.PLAYING && direction.y !== -1) {
         nextDirection = { x: 0, y: 1 };
     }
 });
 
-document.getElementById('btn-left').addEventListener('touchstart', (e) => {
+document.getElementById('btn-left').addEventListener('pointerdown', (e) => {
     e.preventDefault();
     if (currentState === GameState.PLAYING && direction.x !== 1) {
         nextDirection = { x: -1, y: 0 };
     }
 });
 
-document.getElementById('btn-right').addEventListener('touchstart', (e) => {
+document.getElementById('btn-right').addEventListener('pointerdown', (e) => {
     e.preventDefault();
     if (currentState === GameState.PLAYING && direction.x !== -1) {
         nextDirection = { x: 1, y: 0 };
     }
 });
 
-document.getElementById('btn-fire').addEventListener('touchstart', (e) => {
+document.getElementById('btn-fire').addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    if (activePowerup === ItemType.LASER) {
+    if (activePowerups.has(ItemType.LASER)) {
         fireLaser();
     }
 });
 
-document.getElementById('btn-pause').addEventListener('touchstart', (e) => {
+document.getElementById('btn-pause').addEventListener('pointerdown', (e) => {
     e.preventDefault();
     togglePause();
 });
@@ -685,18 +697,32 @@ document.getElementById('btn-pause').addEventListener('touchstart', (e) => {
 let touchStartX = 0;
 let touchStartY = 0;
 
-canvas.addEventListener('touchstart', (e) => {
+canvas.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
+    if (e.touches && e.touches.length > 0) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    } else {
+        touchStartX = e.clientX;
+        touchStartY = e.clientY;
+    }
 }, { passive: false });
 
-canvas.addEventListener('touchend', (e) => {
+canvas.addEventListener('pointerup', (e) => {
     e.preventDefault();
     if (currentState !== GameState.PLAYING) return;
 
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    const dy = e.changedTouches[0].clientY - touchStartY;
+    let clientX, clientY;
+    if (e.changedTouches && e.changedTouches.length > 0) {
+        clientX = e.changedTouches[0].clientX;
+        clientY = e.changedTouches[0].clientY;
+    } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+    }
+
+    const dx = clientX - touchStartX;
+    const dy = clientY - touchStartY;
 
     // Minimum swipe distance
     if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
