@@ -556,6 +556,7 @@ h2.glitch::after {
 
     #canvas-container {
         max-width: 95vw;
+        overflow: visible;
     }
 
     canvas {
@@ -582,5 +583,51 @@ h2.glitch::after {
 
     .overlay h2 {
         font-size: 1.8rem;
+    }
+
+    .overlay {
+        overflow-y: auto;
+        justify-content: flex-start;
+        padding: 20px 10px;
+        position: relative;
+        min-height: 100%;
+        height: auto;
+    }
+
+    .overlay h1 {
+        margin-top: 10px;
+        margin-bottom: 5px;
+    }
+
+    .instructions {
+        margin-bottom: 5px;
+    }
+
+    .instructions p {
+        margin: 2px 0;
+    }
+
+    .powerup-legend {
+        margin-bottom: 5px;
+    }
+
+    .leaderboard {
+        margin-top: 5px !important;
+        margin-bottom: 10px !important;
+    }
+
+    .leaderboard h3 {
+        font-size: 1rem;
+        margin-bottom: 5px;
+    }
+
+    .leaderboard-entry {
+        padding: 4px 10px;
+        font-size: 0.85rem;
+    }
+
+    #start-btn {
+        margin-top: 10px;
+        margin-bottom: 20px;
     }
 }
